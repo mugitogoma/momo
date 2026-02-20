@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L20 - Skip & Save Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb; --success: #10b981; --error: #ef4444;
+            --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; --border: #e2e8f0;
+        }
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .container {
+            max-width: 600px; width: 100%; background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden; position: relative;
+        }
+        .progress-text {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 12px; color: #94a3b8; font-family: 'Fira Code', monospace;
+        }
+        .content { padding: 40px 30px 30px; min-height: 450px; display: flex; flex-direction: column; }
+        .sentence { font-size: 20px; line-height: 1.6; margin-bottom: 8px; font-family: 'Fira Code', monospace; color: var(--text); }
+        .translation { font-size: 16px; color: #64748b; margin-bottom: 15px; }
+        .explanation { 
+            font-size: 14px; color: #1e40af; background: #eff6ff; padding: 12px; 
+            border-radius: 10px; margin-bottom: 20px; display: none; border: 1px solid #dbeafe; 
+        }
+        .choices-area { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: auto; }
+        .sort-area { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: auto; }
+        .btn {
+            padding: 14px 20px; background: white; border: 2px solid var(--border); border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn:hover:not(:disabled) { border-color: var(--primary); background: #f0f9ff; }
+        .btn.used { visibility: hidden; pointer-events: none; }
+        .btn.correct { background: var(--success) !important; color: white !important; border-color: var(--success) !important; }
+        .btn.incorrect { background: var(--error) !important; color: white !important; border-color: var(--error) !important; }
+        .sort-word { color: var(--primary); border-bottom: 2px solid var(--primary); margin: 0 4px; cursor: pointer; font-weight: bold; }
+        
+        .footer-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .next-btn { flex: 2; padding: 16px; background: var(--text); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; display: none; }
+        .skip-btn { flex: 1; padding: 16px; background: #f1f5f9; color: #64748b; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        
+        #overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; pointer-events: none; opacity: 0; transition: 0.3s; z-index: 100; }
+        #overlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div class="container">
+        <div id="progress" class="progress-text"></div>
+        <div class="content">
+            <div id="sentence" class="sentence"></div>
+            <div id="translation" class="translation"></div>
+            <div id="explanation" class="explanation"></div>
+            <div id="choicesArea"></div>
+            <div class="footer-btns">
+                <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">Skip</button>
+                <button id="nextBtn" class="next-btn" onclick="nextQuestion()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const masterQuestions = [
+            { type: "sor", sen: "Yokohama is the city {B}.", ans: "which I was born in", ops: ["which", "I", "was", "born", "in"], trans: "横浜は私が生まれた街だ。", note: "lived in... や born in... のように前置詞 in が必要です。" },
+            { type: "sel", sen: "This is the house {B} Soseki lived.", ans: "in which", ops: ["in which", "which", "whose"], trans: "これは漱石が住んでいた家だ。", note: "lived in the house なので in which が正解。" },
+            { type: "sor", sen: "The movie {B} was very moving.", ans: "which we watched last night", ops: ["which", "we", "watched", "last night"], trans: "私たちが昨夜見た映画はとても感動的だった。", note: "watched の目的語がないので目的格の which を使います。" },
+            { type: "sel", sen: "That is the bus {B} goes to the station.", ans: "that", ops: ["that", "whom", "whose"], trans: "あれは駅へ行くバスだ。", note: "主語の役割をする主格の that (またはwhich) です。" },
+            { type: "sor", sen: "I'll never forget {B}.", ans: "the day when we first met", ops: ["the day", "when", "we", "first", "met"], trans: "私たちが初めて会った日を私は決して忘れない。", note: "時を表す関係副詞 when を使います。" },
+            { type: "sel", sen: "Sunday is the day {B} most people rest.", ans: "when", ops: ["when", "where", "why"], trans: "日曜日はたいていの人が休む日だ。", note: "先行詞が the day なので when を使います。" },
+            { type: "sor", sen: "Tell me {B} he left so early.", ans: "the reason why", ops: ["the reason", "why"], trans: "彼がそんなに早く帰った理由を教えて。", note: "理由を表す the reason why の形です。" },
+            { type: "sel", sen: "This is the park {B} I often play tennis.", ans: "where", ops: ["where", "when", "which"], trans: "これは私がよくテニスをする公園だ。", note: "場所を表す関係副詞 where を使います。" },
+            { type: "sor", sen: "That's {B} he solved the problem.", ans: "how", ops: ["how"], trans: "それが、彼が問題を解決した方法だ。", note: "方法を表す how は the way と一緒には使いません。" },
+            { type: "sel", sen: "This is the hospital {B} my aunt works.", ans: "where", ops: ["where", "which", "who"], trans: "ここは私の叔母が働いている病院です。", note: "場所を表す where。in which と書き換え可能です。" },
+            { type: "sor", sen: "Autumn is the season {B}.", ans: "when the leaves change color", ops: ["when", "the leaves", "change", "color"], trans: "秋は木の葉が色づく季節です。", note: "季節(season)を when で説明します。" },
+            { type: "sel", sen: "There are cases {B} this rule doesn't apply.", ans: "where", ops: ["where", "which", "who"], trans: "この規則が当てはまらない場合があります。", note: "抽象的な「場合(cases)」も where で受けることがあります。" },
+            { type: "sor", sen: "This is {B} she became a famous singer.", ans: "the way", ops: ["the way"], trans: "このようにして、彼女は有名な歌手になった。", note: "the way 単体で「このようにして」という意味になります。" },
+            { type: "sel", sen: "I don't know the reason {B} she is angry.", ans: "why", ops: ["why", "where", "how"], trans: "彼女が怒っている理由がわかりません。", note: "the reason を why で修飾します。" },
+            { type: "sor", sen: "The city {B} is very beautiful.", ans: "where I grew up", ops: ["where", "I", "grew", "up"], trans: "私が育った街はとても美しい。", note: "場所(city) + where。" },
+            { type: "sel", sen: "January is {B} it snows a lot here.", ans: "when", ops: ["when", "where", "why"], trans: "1月は、ここでは雪がたくさん降る時です。", note: "時を表す when。先行詞が省略された形です。" },
+            { type: "sor", sen: "Could you tell me {B}?", ans: "the way you study English", ops: ["the way", "you", "study", "English"], trans: "あなたの英語の勉強法を教えてくれませんか？", note: "the way + S + V で「～する方法」です。" },
+            { type: "sel", sen: "That is the house {B} I was born.", ans: "where", ops: ["where", "which", "that"], trans: "あれは私が生まれた家です。", note: "in which と同じ意味の where が正解。" },
+            { type: "sor", sen: "That is {B} happened.", ans: "why the accident", ops: ["why", "the accident"], trans: "それが、その事故が起きた理由です。", note: "why + S + V。" },
+            { type: "sel", sen: "Do you remember the time {B} we got lost?", ans: "when", ops: ["when", "where", "which"], trans: "私たちが道に迷った時のことを覚えていますか？", note: "時間(the time) + when。" },
+            { type: "sor", sen: "This is {B} it.", ans: "how I see", ops: ["how", "I", "see"], trans: "これが私の見解です（私はそのようにそれを見ています）。", note: "how I see it で「私の見方」という意味。" },
+            { type: "sel", sen: "The library is a place {B} you can study.", ans: "where", ops: ["where", "which", "why"], trans: "図書館は勉強ができる場所です。", note: "場所(place) + where。" },
+            { type: "sor", sen: "I don't like {B} he treats people.", ans: "the way", ops: ["the way"], trans: "私は彼の人の接し方が好きではありません。", note: "the way + S + V。" },
+            { type: "sel", sen: "Is there a reason {B} you can't come?", ans: "why", ops: ["why", "where", "when"], trans: "来られない理由があるのですか？", note: "reason + why。" },
+            { type: "sor", sen: "That was {B}.", ans: "the year when the war ended", ops: ["the year", "when", "the war", "ended"], trans: "それは戦争が終わった年でした。", note: "年(the year) + when。" },
+            { type: "sel", sen: "The restaurant {B} we had lunch was nice.", ans: "where", ops: ["where", "which", "that"], trans: "私たちがランチを食べたレストランは素敵だった。", note: "場所を表す where。" }
+        ];
+
+        const SAVE_KEY = 'english_workbook_l20_save';
+        let savedData = JSON.parse(localStorage.getItem(SAVE_KEY)) || { currentIdx: 0, questions: masterQuestions.map(q => ({...q})), completedSet: [] };
+
+        let questions = savedData.questions;
+        let currentIdx = savedData.currentIdx;
+        let completedSet = new Set(savedData.completedSet);
+        let activeSort = [];
+        let isAnswered = false;
+
+        function saveProgress() {
+            const data = {
+                currentIdx: currentIdx,
+                questions: questions,
+                completedSet: Array.from(completedSet)
+            };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function display() {
+            window.speechSynthesis.cancel();
+            isAnswered = false;
+            activeSort = [];
+            
+            if (currentIdx >= questions.length) {
+                alert("Lesson 20 Mastered! 🎉");
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+                return;
+            }
+
+            const q = questions[currentIdx];
+            q.shuffledOps = shuffle([...q.ops]);
+
+            document.getElementById('progress').innerText = `${completedSet.size} / 26`;
+            document.getElementById('translation').innerText = q.trans;
+            document.getElementById('explanation').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('skipBtn').style.display = 'block';
+            render();
+        }
+
+        function render() {
+            const q = questions[currentIdx];
+            let html = q.sen;
+            if (q.type === 'sor') {
+                const words = activeSort.map((w, i) => `<span class="sort-word" onclick="if(!isAnswered){activeSort.splice(${i},1);render();}">${w}</span>`).join('');
+                html = html.replace('{B}', words || '__________');
+            } else { html = html.replace('{B}', '_______'); }
+            document.getElementById('sentence').innerHTML = html;
+
+            const area = document.getElementById('choicesArea');
+            area.innerHTML = '';
+            area.className = q.type === 'sor' ? 'sort-area' : 'choices-area';
+            
+            q.shuffledOps.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = opt;
+                if (q.type === 'sor') {
+                    const currentInActive = activeSort.filter(x => x === opt).length;
+                    let usedSoFar = 0;
+                    for(let k=0; k<idx; k++){ if(q.shuffledOps[k] === opt) usedSoFar++; }
+                    if(usedSoFar < currentInActive) btn.classList.add('used');
+                }
+                btn.onclick = () => handleInput(opt, btn);
+                area.appendChild(btn);
+            });
+        }
+
+        function handleInput(val, btn) {
+            if (isAnswered) return;
+            const q = questions[currentIdx];
+            if (q.type === 'sel') judge(val === q.ans, btn);
+            else {
+                activeSort.push(val); render();
+                if (activeSort.length === q.ops.length) judge(activeSort.join(' ') === q.ans, null);
+            }
+        }
+
+        function judge(isCorrect, btn) {
+            isAnswered = true;
+            const q = questions[currentIdx];
+            document.getElementById('skipBtn').style.display = 'none';
+            
+            if (isCorrect) {
+                if (btn) btn.classList.add('correct');
+                showFeedback('⭕');
+                const mIdx = masterQuestions.findIndex(m => m.ans === q.ans && m.trans === q.trans);
+                completedSet.add(mIdx);
+            } else {
+                if (btn) btn.classList.add('incorrect');
+                showFeedback('❌');
+                insertRetry(q);
+            }
+
+            document.getElementById('sentence').innerHTML = q.sen.replace('{B}', `<span style="color:var(--success); font-weight:bold;">${q.ans}</span>`);
+            document.getElementById('explanation').innerText = q.note;
+            document.getElementById('explanation').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'block';
+            
+            const uttr = new SpeechSynthesisUtterance(q.sen.replace('{B}', q.ans));
+            uttr.lang = 'en-US'; uttr.rate = 1.0; 
+            window.speechSynthesis.speak(uttr);
+            saveProgress();
+        }
+
+        function skipQuestion() {
+            const q = questions[currentIdx];
+            insertRetry(q);
+            nextQuestion();
+        }
+
+        function insertRetry(q) {
+            const retryQ = {...q};
+            const remaining = questions.length - (currentIdx + 1);
+            const offset = Math.min(remaining, Math.floor(Math.random() * 3) + 3); 
+            const insertPos = currentIdx + 1 + offset;
+            questions.splice(insertPos, 0, retryQ);
+        }
+
+        function showFeedback(symbol) {
+            const el = document.getElementById('overlay');
+            el.innerText = symbol;
+            el.className = 'show';
+            setTimeout(() => el.className = '', 600);
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            saveProgress();
+            display();
+        }
+
+        display();
+    </script>
+</body>
+</html>

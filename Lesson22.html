@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L22-Extra 比較 最終完全版</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #3b82f6; --success: #10b981; --error: #ef4444; --bg: #f8fafc; --text: #1e293b; --border: #e2e8f0; }
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { max-width: 600px; width: 100%; background: #ffffff; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; position: relative; }
+        .progress-text { position: absolute; top: 15px; right: 20px; font-size: 14px; color: #2563eb; font-family: 'Fira Code', monospace; font-weight: bold; }
+        .content { padding: 40px 30px 30px; min-height: 540px; display: flex; flex-direction: column; }
+        .q-header { font-size: 13px; color: #64748b; margin-bottom: 10px; font-weight: bold; }
+        .sentence { font-size: 19px; line-height: 1.6; margin-bottom: 10px; font-family: 'Fira Code', monospace; color: var(--text); min-height: 60px; }
+        .translation { font-size: 17px; color: #1d4ed8; margin-bottom: 20px; font-weight: bold; border-left: 5px solid var(--primary); padding-left: 12px; line-height: 1.4; }
+        .explanation { font-size: 14px; color: #1e40af; background: #eff6ff; padding: 12px; border-radius: 10px; margin-bottom: 20px; display: none; border: 1px solid #bfdbfe; line-height: 1.5; white-space: pre-wrap; }
+        .choices-area { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: auto; }
+        .btn { padding: 14px 18px; background: white; border: 2px solid var(--border); border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; color: var(--text); text-align: left; }
+        .btn.correct { background: var(--success) !important; color: white !important; border-color: var(--success) !important; }
+        .btn.incorrect { background: var(--error) !important; color: white !important; border-color: var(--error) !important; }
+        .footer-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .next-btn { flex: 2; padding: 16px; background: #1e3a8a; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; display: none; }
+        .skip-btn { flex: 1; padding: 16px; background: #f3f4f6; color: #4b5563; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        #overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; pointer-events: none; opacity: 0; transition: 0.3s; z-index: 100; }
+        #overlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div class="container">
+        <div id="progress" class="progress-text"></div>
+        <div class="content">
+            <div id="qHeader" class="q-header"></div>
+            <div id="sentence" class="sentence"></div>
+            <div id="translation" class="translation"></div>
+            <div id="explanation" class="explanation"></div>
+            <div id="choicesArea"></div>
+            <div class="footer-btns">
+                <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">Skip</button>
+                <button id="nextBtn" class="next-btn" onclick="nextQuestion()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const masterQuestions = [
+            /* 1. 語形変化 */
+            { type: "set", cat: "p.46 1.", trans: "cold の変化", base: "cold", ans: ["colder / coldest"], ops: ["colder / coldest", "more cold / most cold"], note: "短い形容詞は語尾に -er, -est をつけます。", speech: "Cold, colder, coldest" },
+            { type: "set", cat: "p.46 1.", trans: "hot の変化", base: "hot", ans: ["hotter / hottest"], ops: ["hotter / hottest", "hoter / hotest"], note: "「短母音＋子音字」で終わる語は、最後の子音字を重ねます。", speech: "Hot, hotter, hottest" },
+            { type: "set", cat: "p.46 1.", trans: "busy の変化", base: "busy", ans: ["busier / busiest"], ops: ["busier / busiest", "busyer / busyest"], note: "「子音字＋y」で終わる語は、yをiに変えて -er, -est をつけます。", speech: "Busy, busier, busiest" },
+            { type: "set", cat: "p.46 1.", trans: "beautiful の変化", base: "beautiful", ans: ["more beautiful / most beautiful"], ops: ["more beautiful / most beautiful", "beautifuler / beautifulest"], note: "長い単語は前に more, most を置きます。", speech: "Beautiful, more beautiful, most beautiful" },
+            { type: "set", cat: "p.46 1.", trans: "quickly の変化", base: "quickly", ans: ["more quickly / most quickly"], ops: ["more quickly / most quickly", "quicklier / quickliest"], note: "-ly で終わる副詞は more, most を使います。", speech: "Quickly, more quickly, most quickly" },
+            { type: "set", cat: "p.46 1.", trans: "many の変化", base: "many", ans: ["more / most"], ops: ["more / most", "manier / maniest"], note: "不規則に変化する重要単語です。", speech: "Many, more, most" },
+            { type: "set", cat: "p.46 1.", trans: "good の変化", base: "good", ans: ["better / best"], ops: ["better / best", "gooder / goodest"], note: "不規則変化です。well も同じ変化をします。", speech: "Good, better, best" },
+            
+            /* 2. 補充 */
+            { type: "sentence", cat: "p.46 2.", trans: "(1) あなたのスピーチのテーマはダイキと同じくらいよい。", base: "Your speech topic is ( )( )( ) Daiki's.", ans: ["as good as"], ops: ["as good as", "as better as"], note: "as + 原級 + as 「〜と同じくらい…」" },
+            { type: "sentence", cat: "p.46 2.", trans: "(2) 井上先生は早田先生と同じくらいの年齢だ。", base: "Mr. Inoue is ( )( )( ) Mr. Hayata.", ans: ["as old as"], ops: ["as old as", "as older as"], note: "比較級ではなく原級 old を使います。" },
+            { type: "sentence", cat: "p.46 2.", trans: "(3) 利根川は信濃川ほど長くない。", base: "The Tone River ( )( )( )( ) as the Shinano River.", ans: ["is not so long", "is not as long"], ops: ["is not so long", "is not as long", "is not more long"], note: "否定文 not as...as / not so...as 「〜ほど…ない」\nlong（長い）を忘れずに入れます。" },
+            { type: "sentence", cat: "p.46 2.", trans: "(4) 私はふだん、兄ほど早く起きない。", base: "I don't usually get up ( )( )( ) my brother.", ans: ["as early as"], ops: ["as early as", "as earlier as"], note: "get up を修飾する副詞 early の原級を使います。" },
+            { type: "sentence", cat: "p.46 2.", trans: "(5) このプールはあのプールの2倍の深さだ。", base: "This pool is ( )( )( )( ) as that one.", ans: ["twice as deep"], ops: ["twice as deep", "two times deep"], note: "倍数表現(twice) ＋ as...as" },
+            { type: "sentence", cat: "p.46 2.", trans: "(6) リンは彼女の姉と同じくらいの数の服を持っている。", base: "Rin has as ( )( )( )( ) her sister.", ans: ["many clothes as"], ops: ["many clothes as", "much clothes as"], note: "as many + 名詞 ＋ as 「〜と同じくらいの数の…」" },
+
+            /* 3. 完成 */
+            { type: "sentence", cat: "p.46 3.", trans: "(1) この動画はあの動画よりも人気がある。", base: "This video is ____________________ that one.", ans: ["more popular than"], ops: ["more popular than", "popularer than"], note: "popular は長い語なので more を使います。" },
+            { type: "sentence", cat: "p.46 3.", trans: "(2) エマは私よりも歌が上手だ。", base: "Emma sings ____________________ me.", ans: ["better than"], ops: ["better than", "more well than"], note: "well の比較級 better を使います。" },
+            { type: "sentence", cat: "p.46 3.", trans: "(3) 太陽は地球よりもずっと大きい。", base: "The sun is ____________________ the earth.", ans: ["much larger than"], ops: ["much larger than", "very larger than"], note: "比較級を強調する場合は very ではなく much を使います。" },
+            { type: "sentence", cat: "p.46 3.", trans: "(4) ショウタはレンより10センチ背が高い。", base: "Shota is ____________________ Ren.", ans: ["ten centimeters taller than"], ops: ["ten centimeters taller than", "taller ten centimeters than"], note: "差を表す言葉は比較級の前に置きます。" },
+            { type: "sentence", cat: "p.46 3.", trans: "(5) メキシコの人口は日本よりも多い。", base: "The population of Mexico ____________________ Japan.", ans: ["is larger than that of"], ops: ["is larger than that of", "is more than"], note: "人口(population)の大小は large / small を使い、比較対象は that of (the population of) で受けます。" },
+
+            /* 4. 同意文 */
+            { type: "sentence", cat: "p.47 4.", trans: "(1) あの電池はこれより70g重い。", base: "That battery is ( )( )( ) this one ( ) seventy grams.", ans: ["seventy grams heavier than / by"], ops: ["seventy grams heavier than / by", "seventy grams lighter than / by"], note: "「重い」は heavier。差を後ろに置く場合は by を使います。" },
+            { type: "sentence", cat: "p.47 4.", trans: "(2) B問題はA問題ほど簡単ではない。", base: "Question B is ( )( )( )( ) Question A.", ans: ["not as [so] easy as"], ops: ["not as [so] easy as", "easier than"], note: "否定の比較。「〜ほど…でない」" },
+            { type: "sentence", cat: "p.47 4.", trans: "(3) ブラジルはロシアの半分の大きさだ。", base: "Brazil is ( )( )( )( ) as Russia.", ans: ["half as large"], ops: ["half as large", "twice as large"], note: "half as...as で「半分の…」" },
+
+            /* 5. 並べ替え */
+            { type: "sentence", cat: "p.47 5.", trans: "(1) 私はケイトよりもはるかに背が高い。", base: "I'm (than, far, Kate, taller).", ans: ["far taller than Kate"], ops: ["far taller than Kate", "taller far than Kate"], note: "far は比較級を強調します。" },
+            { type: "sentence", cat: "p.47 5.", trans: "(2) このかばんはあのかばんの3倍の値段だ。", base: "This bag is (as, as, three, that one, expensive, times).", ans: ["three times as expensive as that one"], ops: ["three times as expensive as that one", "three times expensive as as"], note: "three times as...as の語順です。" },
+            { type: "sentence", cat: "p.47 5.", trans: "(3) 私たちの部にはあなたのところと同じくらいの数の部員がいる。", base: "Our club has (many, as, as, members) yours.", ans: ["as many members as"], ops: ["as many members as", "as members many as"], note: "as many + 名詞 + as の形。" },
+
+            /* 6. 英訳 */
+            { type: "sentence", cat: "p.47 6.", trans: "(1) アヤカは私よりもずっと流ちょうに英語を話す。", base: "Ayaka speaks English ( ).", ans: ["much more fluently than I"], ops: ["much more fluently than I", "more fluently much"], note: "副詞 fluently を more で比較し、much で強調します。" },
+            { type: "sentence", cat: "p.47 6.", trans: "(2) このネコはあのイヌと同じくらいの大きさだ。", base: "This cat is ( ).", ans: ["as big as that dog"], ops: ["as big as that dog", "as big as that dog is"] },
+            { type: "sentence", cat: "p.47 6.", trans: "(3) 台湾の気候は日本（の気候）よりも暖かい。", base: "The climate of Taiwan is ( ).", ans: ["warmer than that of Japan"], ops: ["warmer than that of Japan", "warmer than Japan"], note: "気候(climate)を比較するので that of Japan とします。" },
+            { type: "sentence", cat: "p.47 6.", trans: "(4) 私は兄よりも20分遅く帰宅した。", base: "I came home ( ).", ans: ["twenty minutes later than my brother"], ops: ["twenty minutes later than my brother", "later twenty minutes"], note: "「時間差 ＋ 比較級」の語順。" },
+            { type: "sentence", cat: "p.47 6.", trans: "(5) この山はあの山のおよそ半分の高さだ。", base: "This mountain is ( ).", ans: ["about half as high as that one"], ops: ["about half as high as that one", "half high as"], note: "about half as...as" },
+            { type: "sentence", cat: "p.47 Challenge", trans: "ユウタはリョウよりも速く走る。", base: "Yuta runs ( ) Ryo.", ans: ["faster than"], ops: ["faster than", "fastest than"] }
+        ];
+
+        let questions = []; let currentIdx = 0; let completedCount = 0; let isAnswered = false;
+        function save() { localStorage.setItem('quiz_restored_final', JSON.stringify({questions, currentIdx, completedCount})); }
+        function load() { const s = localStorage.getItem('quiz_restored_final'); if(s) { const d = JSON.parse(s); questions = d.questions; currentIdx = d.currentIdx; completedCount = d.completedCount; return true; } return false; }
+        
+        function display() {
+            window.speechSynthesis.cancel(); isAnswered = false;
+            if (currentIdx >= questions.length) { alert("全問完了！"); localStorage.removeItem('quiz_restored_final'); location.reload(); return; }
+            const q = questions[currentIdx];
+            document.getElementById('progress').innerText = `${completedCount} / 30`;
+            document.getElementById('qHeader').innerText = q.cat;
+            document.getElementById('sentence').innerText = q.base;
+            document.getElementById('translation').innerText = q.trans;
+            document.getElementById('explanation').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('skipBtn').style.display = 'block';
+            const area = document.getElementById('choicesArea'); area.innerHTML = '';
+            [...q.ops].sort(()=>Math.random()-0.5).forEach(o => {
+                const b = document.createElement('button'); b.className = 'btn'; b.innerText = o;
+                b.onclick = () => judge(o, b); area.appendChild(b);
+            });
+        }
+
+        function judge(sel, b) {
+            if (isAnswered) return; isAnswered = true;
+            const q = questions[currentIdx];
+            document.getElementById('skipBtn').style.display = 'none';
+            const isCorrect = q.ans.includes(sel);
+            if (isCorrect) { b.classList.add('correct'); showF('⭕'); completedCount++; }
+            else { b.classList.add('incorrect'); showF('❌'); document.querySelectorAll('.btn').forEach(x=>{if(q.ans.includes(x.innerText)) x.classList.add('correct');}); questions.push({...q}); }
+            
+            let solved = q.base.includes('(') ? q.base.replace(/\(.*\)/, sel) : q.base.replace(/____+/, sel);
+            document.getElementById('sentence').innerHTML = `<span style="color:var(--success); font-weight:bold;">${solved}</span>`;
+            if(q.note) { document.getElementById('explanation').innerText = q.note; document.getElementById('explanation').style.display = 'block'; }
+            document.getElementById('nextBtn').style.display = 'block';
+            
+            let speechText = (q.type === "set") ? q.speech : solved.replace(/[\(\)\[\]]/g, "");
+            const uttr = new SpeechSynthesisUtterance(speechText); uttr.lang = 'en-US'; uttr.rate = 0.85; window.speechSynthesis.speak(uttr);
+            save();
+        }
+
+        function showF(s) { const e = document.getElementById('overlay'); e.innerText = s; e.className = 'show'; setTimeout(() => e.className = '', 600); }
+        function skipQuestion() { questions.push({...questions[currentIdx]}); nextQuestion(); }
+        function nextQuestion() { currentIdx++; save(); display(); }
+        window.onload = () => { if(!load()) questions = [...masterQuestions]; display(); };
+    </script>
+</body>
+</html>

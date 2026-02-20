@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L23-EL4 比較完結編 (p.48-49)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #ec4899; --success: #10b981; --error: #ef4444;
+            --bg: #fdf2f8; --card-bg: #ffffff; --text: #831843; --border: #fbcfe8;
+        }
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .container {
+            max-width: 600px; width: 100%; background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15); overflow: hidden; position: relative;
+        }
+        .progress-text {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 12px; color: #db2777; font-family: 'Fira Code', monospace;
+        }
+        .content { padding: 40px 30px 30px; min-height: 480px; display: flex; flex-direction: column; }
+        .sentence { font-size: 19px; line-height: 1.6; margin-bottom: 8px; font-family: 'Fira Code', monospace; color: var(--text); min-height: 60px; }
+        .translation { font-size: 16px; color: #be185d; margin-bottom: 15px; font-weight: bold; }
+        .explanation { 
+            font-size: 14px; color: #9d174d; background: #fff1f2; padding: 12px; 
+            border-radius: 10px; margin-bottom: 20px; display: none; border: 1px solid #fecdd3; 
+        }
+        .choices-area { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: auto; }
+        .sort-area { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: auto; }
+        .btn {
+            padding: 12px 18px; background: white; border: 2px solid var(--border); border-radius: 12px;
+            font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; color: var(--text);
+        }
+        .btn:hover:not(:disabled) { border-color: var(--primary); background: #fff1f2; }
+        .btn.used { visibility: hidden; pointer-events: none; }
+        .btn.correct { background: var(--success) !important; color: white !important; border-color: var(--success) !important; }
+        .btn.incorrect { background: var(--error) !important; color: white !important; border-color: var(--error) !important; }
+        .sort-word { color: var(--primary); border-bottom: 2px solid var(--primary); margin: 0 4px; cursor: pointer; font-weight: bold; }
+        
+        .footer-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .next-btn { flex: 2; padding: 16px; background: #831843; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; display: none; }
+        .skip-btn { flex: 1; padding: 16px; background: #f3f4f6; color: #4b5563; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        
+        #overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; pointer-events: none; opacity: 0; transition: 0.3s; z-index: 100; }
+        #overlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div class="container">
+        <div id="progress" class="progress-text"></div>
+        <div class="content">
+            <div id="sentence" class="sentence"></div>
+            <div id="translation" class="translation"></div>
+            <div id="explanation" class="explanation"></div>
+            <div id="choicesArea"></div>
+            <div class="footer-btns">
+                <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">Skip</button>
+                <button id="nextBtn" class="next-btn" onclick="nextQuestion()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const masterQuestions = [
+            /* p.48 Lesson 23 */
+            { type: "sel", base: "Mai dances the ( ) the class.", full: "Mai dances the <span style='color:var(--success); font-weight:bold;'>best in</span> the class.", ans: "best in", ops: ["best in", "best of", "better in"], trans: "マイはクラスで一番踊るのが上手だ。", note: "場所や集団が範囲の場合は in を使います。" },
+            { type: "sel", base: "This question is ( ) the most difficult ( ) all.", full: "This question is <span style='color:var(--success); font-weight:bold;'>by far</span> the most difficult <span style='color:var(--success); font-weight:bold;'>of</span> all.", ans: "by far / of", ops: ["by far / of", "much / in", "very / of"], trans: "この問題はすべての問題の中でずばぬけて難しい。", note: "最上級の強調は by far、範囲が all の場合は of です。" },
+            { type: "sel", base: "Jim is ( ) runner on the team.", full: "Jim is <span style='color:var(--success); font-weight:bold;'>the second fastest</span> runner on the team.", ans: "the second fastest", ops: ["the second fastest", "second fastest the"], trans: "ジムはチームで2番目に走るのが速い。", note: "「the + 序数 + 最上級」の語順です。" },
+            { type: "sel", base: "This is ( ) of the ( ) in China.", full: "This is <span style='color:var(--success); font-weight:bold;'>one</span> of the <span style='color:var(--success); font-weight:bold;'>oldest castles</span> in China.", ans: "one / oldest castles", ops: ["one / oldest castles", "one / oldest castle"], trans: "これは中国で最も古い城の1つだ。", note: "one of the + 複数名詞の形です。" },
+            { type: "sor", base: "He is ", ans: "not so much a comedian as an actor", ops: ["not", "so", "much", "a comedian", "as", "an actor"], trans: "彼はお笑い芸人というよりはむしろ俳優だ。", note: "not so much A as B「AというよりはB」です。" },
+            { type: "sor", base: "Could ", ans: "you speak as slowly as possible", ops: ["you", "speak", "as", "slowly", "as", "possible"], trans: "できるだけゆっくり話していただけますか。", note: "as ~ as possible = as ~ as you can です。" },
+            { type: "sel", base: "The more you study, the more you know.", full: "The more you study, the more you know.", ans: "勉強すればするほど、知識が増える。", ops: ["勉強すればするほど、知識が増える。", "勉強することは良いことだ。"], trans: "英文の意味を選んでください。", note: "the + 比較級, the + 比較級「～すればするほど…」です。" },
+            { type: "sel", base: "Japanese food is becoming more and more popular in the world.", full: "Japanese food is becoming more and more popular in the world.", ans: "日本食は世界でますます人気になってきている。", ops: ["日本食は世界でますます人気になってきている。", "日本食は世界で一番人気だ。"], trans: "英文の意味を選んでください。", note: "比較級 and 比較級「ますます～」です。" },
+            { type: "sor", base: "", ans: "What is the third longest river in the world?", ops: ["What", "is", "the", "third", "longest", "river", "in", "the", "world?"], trans: "世界で3番目に長い川は何ですか。", note: "「the + 序数 + 最上級」を使います。" },
+            { type: "sor", base: "Please come back here ", ans: "as soon as possible", ops: ["as", "soon", "as", "possible"], trans: "できるだけすぐにここに戻ってきてください。", note: "as soon as possible「できるだけ早く」。" },
+            { type: "sor", base: "This is ", ans: "the most useful dictionary that I have ever bought", ops: ["the", "most", "useful", "dictionary", "that", "I", "have", "ever", "bought"], trans: "これは私がこれまで買った中で、一番役に立つ辞書だ。", note: "最上級を現在完了で修飾する形です。" },
+            { type: "sor", base: "", ans: "He is the tallest of the three brothers", ops: ["He", "is", "the", "tallest", "of", "the", "three", "brothers"], trans: "彼は3人兄弟の中で一番背が高い。", note: "3人以上の比較は最上級です。" },
+
+            /* p.49 Extra Lesson 4 */
+            { type: "sel", base: "Meg can speak ( ) than four languages.", full: "Meg can speak <span style='color:var(--success); font-weight:bold;'>no less</span> than four languages.", ans: "no less", ops: ["no less", "no more", "not less"], trans: "メグは4か国語も話せる。", note: "no less than「～も（たくさん）」" },
+            { type: "sel", base: "This charger is ( ) than my thumb.", full: "This charger is <span style='color:var(--success); font-weight:bold;'>no bigger</span> than my thumb.", ans: "no bigger", ops: ["no bigger", "not bigger"], trans: "この充電器は、私の親指ほどの大きさしかない。", note: "no + 比較級 + than「～と同じくらい～しかない」" },
+            { type: "sel", base: "Aya got ( ) the ( ) I kept silent.", full: "Aya got <span style='color:var(--success); font-weight:bold;'>all</span> the <span style='color:var(--success); font-weight:bold;'>angrier</span> because I kept silent.", ans: "all / angrier", ops: ["all / angrier", "more / angrier"], trans: "私がずっと黙っていたので、アヤはいっそう怒った。", note: "all the + 比較級 + because ~「～なのでいっそう…」" },
+            { type: "sel", base: "This restaurant is ( ) to that one in service.", full: "This restaurant is <span style='color:var(--success); font-weight:bold;'>superior</span> to that one in service.", ans: "superior", ops: ["superior", "better"], trans: "このレストランはサービスの点で、あのレストランより優れている。", note: "superior to ~「～より優れている」。" },
+            { type: "sel", base: "( ) in my class sings ( ) Mina.", full: "<span style='color:var(--success); font-weight:bold;'>No one</span> in my class sings <span style='color:var(--success); font-weight:bold;'>better than</span> Mina.", ans: "No one / better than", ops: ["No one / better than", "Anyone / better than"], trans: "ミーナはクラスで一番歌が上手い（同意文書き換え）", note: "否定語主語 + 比較級。" },
+            { type: "sel", base: "( ) city in Japan is as ( ) Tokyo.", full: "<span style='color:var(--success); font-weight:bold;'>No</span> city in Japan is as <span style='color:var(--success); font-weight:bold;'>big as</span> Tokyo.", ans: "No / big as", ops: ["No / big as", "Any / bigger than"], trans: "東京は日本で一番大きな都市だ（同意文書き換え）", note: "No ~ as ... as。" },
+            { type: "sor", base: "", ans: "Not less than ten people will attend the meeting", ops: ["Not", "less", "than", "ten", "people", "will", "attend", "the", "meeting"], trans: "少なくとも10人は会議に出席するだろう。", note: "not less than「少なくとも」。" },
+            { type: "sor", base: "This church ", ans: "is older than any other building", ops: ["is", "older", "than", "any", "other", "building"], trans: "この教会は町の中のどの建物よりも古い。", note: "比較級 + than any other + 単数名詞。" },
+            { type: "sor", base: "A whale ", ans: "is no more a fish than a horse is", ops: ["is", "no", "more", "a fish", "than", "a", "horse", "is"], trans: "クジラが魚でないのは、馬が魚でないのと同じだ。", note: "no more ... than ～。" },
+            { type: "sor", base: "For me, ", ans: "nothing is more important than music", ops: ["nothing", "is", "more", "important", "than", "music"], trans: "私にとって、音楽より大切なものはない。", note: "Nothing is more ~ than ...。" },
+            { type: "sor", base: "My father ", ans: "prefers fish to meat", ops: ["prefers", "fish", "to", "meat"], trans: "父は、肉よりも魚のほうが好きだ。", note: "prefer A to B。" },
+            { type: "sor", base: "We chose ", ans: "the smaller of the two dogs", ops: ["the", "smaller", "of", "the", "two", "dogs"], trans: "私たちはその2匹のイヌのうち、小さいほうを選んだ。", note: "the + 比較級 of the two。" },
+            { type: "sor", base: "No other prefecture is ", ans: "as large as Hokkaido", ops: ["as", "large", "as", "Hokkaido"], trans: "北海道ほど大きな都道府県は他にない。", note: "No other ~ as ... as。" }
+        ];
+
+        const SAVE_KEY = 'english_workbook_final_v3';
+        let savedData = JSON.parse(localStorage.getItem(SAVE_KEY)) || { currentIdx: 0, completedCount: 0 };
+        let currentIdx = savedData.currentIdx;
+        let completedCount = savedData.completedCount;
+        let questions = [...masterQuestions];
+        let activeSort = [];
+        let isAnswered = false;
+
+        function saveProgress() {
+            localStorage.setItem(SAVE_KEY, JSON.stringify({ currentIdx, completedCount }));
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function display() {
+            window.speechSynthesis.cancel();
+            isAnswered = false;
+            activeSort = [];
+            
+            if (currentIdx >= questions.length) {
+                alert("p.48-49 比較セクション 完了！");
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+                return;
+            }
+
+            const q = questions[currentIdx];
+            q.shuffledOps = shuffle([...q.ops]);
+
+            document.getElementById('progress').innerText = `${completedCount} / 25`;
+            document.getElementById('translation').innerText = q.trans;
+            document.getElementById('explanation').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('skipBtn').style.display = 'block';
+            render();
+        }
+
+        function render() {
+            const q = questions[currentIdx];
+            const displayArea = document.getElementById('sentence');
+            
+            if (q.type === 'sel') {
+                displayArea.innerHTML = q.base;
+            } else {
+                const words = activeSort.map((w, i) => `<span class="sort-word" onclick="if(!isAnswered){activeSort.splice(${i},1);render();}">${w}</span>`).join('');
+                displayArea.innerHTML = q.base + words + (activeSort.length === 0 ? " ____" : "");
+            }
+
+            const area = document.getElementById('choicesArea');
+            area.innerHTML = '';
+            area.className = q.type === 'sor' ? 'sort-area' : 'choices-area';
+            
+            q.shuffledOps.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = opt;
+                if (q.type === 'sor') {
+                    const countInActive = activeSort.filter(x => x === opt).length;
+                    let usedSoFar = 0;
+                    for(let k=0; k<idx; k++){ if(q.shuffledOps[k] === opt) usedSoFar++; }
+                    if(usedSoFar < countInActive) btn.classList.add('used');
+                }
+                btn.onclick = () => handleInput(opt, btn);
+                area.appendChild(btn);
+            });
+        }
+
+        function handleInput(val, btn) {
+            if (isAnswered) return;
+            const q = questions[currentIdx];
+            if (q.type === 'sel') judge(val === q.ans, btn);
+            else {
+                activeSort.push(val); render();
+                if (activeSort.length === q.ops.length) judge(activeSort.join(' ').replace('?', '').toLowerCase() === q.ans.replace('?', '').toLowerCase(), null);
+            }
+        }
+
+        function judge(isCorrect, btn) {
+            isAnswered = true;
+            const q = questions[currentIdx];
+            document.getElementById('skipBtn').style.display = 'none';
+            
+            if (isCorrect) {
+                if (btn) btn.classList.add('correct');
+                showFeedback('⭕');
+                completedCount++;
+            } else {
+                if (btn) btn.classList.add('incorrect');
+                showFeedback('❌');
+                questions.push({...q});
+            }
+
+            // 正解時は full 文（着色済み）を表示
+            if (q.type === 'sel') {
+                document.getElementById('sentence').innerHTML = q.full;
+            } else {
+                document.getElementById('sentence').innerHTML = q.base + `<span style="color:var(--success); font-weight:bold;">${q.ans}</span>`;
+            }
+            
+            document.getElementById('explanation').innerText = q.note;
+            document.getElementById('explanation').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'block';
+            
+            const speakText = q.ans.replace(/\//g, ' ');
+            const uttr = new SpeechSynthesisUtterance(q.type === 'sel' ? q.full.replace(/<[^>]*>/g, '') : q.base + q.ans);
+            uttr.lang = 'en-US'; 
+            window.speechSynthesis.speak(uttr);
+            saveProgress();
+        }
+
+        function skipQuestion() {
+            questions.push({...questions[currentIdx]});
+            nextQuestion();
+        }
+
+        function showFeedback(symbol) {
+            const el = document.getElementById('overlay');
+            el.innerText = symbol;
+            el.className = 'show';
+            setTimeout(() => el.className = '', 600);
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            saveProgress();
+            display();
+        }
+
+        display();
+    </script>
+</body>
+</html>

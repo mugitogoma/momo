@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L21+EL3 - Skip & Save Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb; --success: #10b981; --error: #ef4444;
+            --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; --border: #e2e8f0;
+        }
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .container {
+            max-width: 600px; width: 100%; background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden; position: relative;
+        }
+        .progress-text {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 12px; color: #94a3b8; font-family: 'Fira Code', monospace;
+        }
+        .content { padding: 40px 30px 30px; min-height: 450px; display: flex; flex-direction: column; }
+        .sentence { font-size: 20px; line-height: 1.6; margin-bottom: 8px; font-family: 'Fira Code', monospace; color: var(--text); }
+        .translation { font-size: 16px; color: #64748b; margin-bottom: 15px; }
+        .explanation { 
+            font-size: 14px; color: #1e40af; background: #eff6ff; padding: 12px; 
+            border-radius: 10px; margin-bottom: 20px; display: none; border: 1px solid #dbeafe; 
+        }
+        .choices-area { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: auto; }
+        .sort-area { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: auto; }
+        .btn {
+            padding: 14px 20px; background: white; border: 2px solid var(--border); border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn:hover:not(:disabled) { border-color: var(--primary); background: #f0f9ff; }
+        .btn.used { visibility: hidden; pointer-events: none; }
+        .btn.correct { background: var(--success) !important; color: white !important; border-color: var(--success) !important; }
+        .btn.incorrect { background: var(--error) !important; color: white !important; border-color: var(--error) !important; }
+        .sort-word { color: var(--primary); border-bottom: 2px solid var(--primary); margin: 0 4px; cursor: pointer; font-weight: bold; }
+        
+        .footer-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .next-btn { flex: 2; padding: 16px; background: var(--text); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; display: none; }
+        .skip-btn { flex: 1; padding: 16px; background: #f1f5f9; color: #64748b; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        
+        #overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; pointer-events: none; opacity: 0; transition: 0.3s; z-index: 100; }
+        #overlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div class="container">
+        <div id="progress" class="progress-text"></div>
+        <div class="content">
+            <div id="sentence" class="sentence"></div>
+            <div id="translation" class="translation"></div>
+            <div id="explanation" class="explanation"></div>
+            <div id="choicesArea"></div>
+            <div class="footer-btns">
+                <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">Skip</button>
+                <button id="nextBtn" class="next-btn" onclick="nextQuestion()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const masterQuestions = [
+            // Lesson 21
+            { type: "sel", sen: "This is {B} I want to say.", ans: "what", ops: ["what", "which", "that"], trans: "これが私の言いたいことです。", note: "先行詞を含む関係代名詞 what です。「～すること」と訳します。" },
+            { type: "sor", sen: "{B} is a world map.", ans: "What he is looking at", ops: ["What", "he", "is", "looking", "at"], trans: "彼が見ているものは世界地図です。", note: "What節が文全体の主語になっています。" },
+            { type: "sel", sen: "{B} is important is your health.", ans: "What", ops: ["What", "Which", "That"], trans: "重要なのはあなたの健康です。", note: "「重要なこと」を表す主語の What です。" },
+            { type: "sor", sen: "She didn't hear {B}.", ans: "what I said", ops: ["what", "I", "said"], trans: "彼女は私が言ったことが聞こえなかった。", note: "hear の目的語として what節が使われています。" },
+            { type: "sel", sen: "Please show me {B} is in your bag.", ans: "what", ops: ["what", "which", "that"], trans: "あなたのバッグの中にあるものを見せてください。", note: "show me (人) (もの) の「もの」の部分です。" },
+            { type: "sor", sen: "He bought {B}.", ans: "what he wanted", ops: ["what", "he", "wanted"], trans: "彼は自分が欲しかったものを買った。", note: "what ＝ the thing which です。" },
+            { type: "sel", sen: "Tell me {B} you think about this plan.", ans: "what", ops: ["what", "which", "that"], trans: "この計画についてあなたが考えていることを教えてください。", note: "think の目的語としての what です。" },
+            { type: "sor", sen: "{B} is true.", ans: "What she told you", ops: ["What", "she", "told", "you"], trans: "彼女があなたに話したことは本当です。", note: "What S V が主語のかたまりです。" },
+            { type: "sel", sen: "This is {B} he needs.", ans: "what", ops: ["what", "that", "which"], trans: "これが彼の必要としているものです。", note: "先行詞がないので what を選びます。" },
+            { type: "sor", sen: "I can't believe {B}.", ans: "what happened today", ops: ["what", "happened", "today"], trans: "今日起きたことが信じられない。", note: "what 自体が happened の主語になっています。" },
+            { type: "sel", sen: "Is this {B} you are looking for?", ans: "what", ops: ["what", "which", "that"], trans: "これはあなたが探しているものですか？", note: "look for の目的語が what になっています。" },
+            { type: "sor", sen: "We should do {B}.", ans: "what is right", ops: ["what", "is", "right"], trans: "私たちは正しいことをすべきだ。", note: "「正しいこと」という意味の what です。" },
+            { type: "sel", sen: "That is {B} I know.", ans: "what", ops: ["what", "that", "which"], trans: "それが私の知っていることです。", note: "know の目的語です。" },
+            
+            // Extra Lesson 3
+            { type: "sel", sen: "The person {B} I respect is my teacher.", ans: "who", ops: ["who", "which", "whose"], trans: "私が尊敬する人は先生です。", note: "先行詞が人で、respect の目的語が欠けているので who(whom) です。" },
+            { type: "sor", sen: "This is the car {B}.", ans: "which my uncle gave me", ops: ["which", "my uncle", "gave", "me"], trans: "これはおじが私にくれた車です。", note: "give (人) (もの) の「もの」が前に出ています。" },
+            { type: "sel", sen: "I like books {B} have happy endings.", ans: "which", ops: ["which", "who", "whose"], trans: "私はハッピーエンドの本が好きです。", note: "先行詞が物(books)で、直後に動詞が続く主格です。" },
+            { type: "sor", sen: "Do you know the boy {B}?", ans: "who is running over there", ops: ["who", "is", "running", "over there"], trans: "あそこで走っている少年を知っていますか？", note: "boy を who 節が修飾します。" },
+            { type: "sel", sen: "He is the writer {B} everyone knows.", ans: "who", ops: ["who", "which", "whose"], trans: "彼は誰もが知っている作家です。", note: "人(writer)の目的格です。" },
+            { type: "sor", sen: "This is the house {B}.", ans: "where my grandmother lives", ops: ["where", "my grandmother", "lives"], trans: "これは私の祖母が住んでいる家です。", note: "場所(house) ＋ 関係副詞 where です。" },
+            { type: "sel", sen: "The day {B} we met was rainy.", ans: "when", ops: ["when", "where", "why"], trans: "私たちが会った日は雨だった。", note: "時間(day) ＋ 関係副詞 when です。" },
+            { type: "sor", sen: "I don't know {B}.", ans: "the reason why she left", ops: ["the reason", "why", "she", "left"], trans: "彼女が去った理由を知りません。", note: "理由(reason) ＋ why です。" },
+            { type: "sel", sen: "The city {B} I visited was beautiful.", ans: "which", ops: ["which", "where", "what"], trans: "私が訪れた都市は美しかった。", note: "visited は他動詞なので目的格の関係代名詞 which が適切です。" },
+            { type: "sor", sen: "Tell me {B}.", ans: "what you want for Christmas", ops: ["what", "you", "want", "for", "Christmas"], trans: "クリスマスに何が欲しいか教えて。", note: "先行詞を含んだ what 「何、～なもの」です。" },
+            { type: "sel", sen: "A teacher {B} names are forgotten is sad.", ans: "whose", ops: ["whose", "who", "whom"], trans: "名前を忘れられる先生は悲しい。", note: "「先生の名前」という所有関係です。" },
+            { type: "sor", sen: "That is {B} I study.", ans: "the way", ops: ["the way"], trans: "それが私の勉強のやり方です。", note: "the way (+ S + V) で「やり方・方法」を表します。" }
+        ];
+
+        const SAVE_KEY = 'english_workbook_l21_el3_save';
+        let savedData = JSON.parse(localStorage.getItem(SAVE_KEY)) || { currentIdx: 0, questions: masterQuestions.map(q => ({...q})), completedSet: [] };
+
+        let questions = savedData.questions;
+        let currentIdx = savedData.currentIdx;
+        let completedSet = new Set(savedData.completedSet);
+        let activeSort = [];
+        let isAnswered = false;
+
+        function saveProgress() {
+            localStorage.setItem(SAVE_KEY, JSON.stringify({
+                currentIdx: currentIdx,
+                questions: questions,
+                completedSet: Array.from(completedSet)
+            }));
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function display() {
+            window.speechSynthesis.cancel();
+            isAnswered = false;
+            activeSort = [];
+            
+            if (currentIdx >= questions.length) {
+                alert("L21 & EL3 Clear! お疲れ様でした！");
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+                return;
+            }
+
+            const q = questions[currentIdx];
+            q.shuffledOps = shuffle([...q.ops]);
+
+            document.getElementById('progress').innerText = `${completedSet.size} / 25`;
+            document.getElementById('translation').innerText = q.trans;
+            document.getElementById('explanation').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('skipBtn').style.display = 'block';
+            render();
+        }
+
+        function render() {
+            const q = questions[currentIdx];
+            let html = q.sen;
+            if (q.type === 'sor') {
+                const words = activeSort.map((w, i) => `<span class="sort-word" onclick="if(!isAnswered){activeSort.splice(${i},1);render();}">${w}</span>`).join('');
+                html = html.replace('{B}', words || '__________');
+            } else { html = html.replace('{B}', '_______'); }
+            document.getElementById('sentence').innerHTML = html;
+
+            const area = document.getElementById('choicesArea');
+            area.innerHTML = '';
+            area.className = q.type === 'sor' ? 'sort-area' : 'choices-area';
+            
+            q.shuffledOps.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = opt;
+                if (q.type === 'sor') {
+                    const countInActive = activeSort.filter(x => x === opt).length;
+                    let usedSoFar = 0;
+                    for(let k=0; k<idx; k++){ if(q.shuffledOps[k] === opt) usedSoFar++; }
+                    if(usedSoFar < countInActive) btn.classList.add('used');
+                }
+                btn.onclick = () => handleInput(opt, btn);
+                area.appendChild(btn);
+            });
+        }
+
+        function handleInput(val, btn) {
+            if (isAnswered) return;
+            const q = questions[currentIdx];
+            if (q.type === 'sel') judge(val === q.ans, btn);
+            else {
+                activeSort.push(val); render();
+                if (activeSort.length === q.ops.length) judge(activeSort.join(' ') === q.ans, null);
+            }
+        }
+
+        function judge(isCorrect, btn) {
+            isAnswered = true;
+            const q = questions[currentIdx];
+            document.getElementById('skipBtn').style.display = 'none';
+            
+            if (isCorrect) {
+                if (btn) btn.classList.add('correct');
+                showFeedback('⭕');
+                const mIdx = masterQuestions.findIndex(m => m.ans === q.ans && m.trans === q.trans);
+                completedSet.add(mIdx);
+            } else {
+                if (btn) btn.classList.add('incorrect');
+                showFeedback('❌');
+                insertRetry(q);
+            }
+
+            document.getElementById('sentence').innerHTML = q.sen.replace('{B}', `<span style="color:var(--success); font-weight:bold;">${q.ans}</span>`);
+            document.getElementById('explanation').innerText = q.note;
+            document.getElementById('explanation').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'block';
+            
+            const uttr = new SpeechSynthesisUtterance(q.sen.replace('{B}', q.ans));
+            uttr.lang = 'en-US'; uttr.rate = 1.0; 
+            window.speechSynthesis.speak(uttr);
+            saveProgress();
+        }
+
+        function skipQuestion() {
+            insertRetry(questions[currentIdx]);
+            nextQuestion();
+        }
+
+        function insertRetry(q) {
+            const retryQ = {...q};
+            const remaining = questions.length - (currentIdx + 1);
+            const offset = Math.min(remaining, Math.floor(Math.random() * 3) + 3); 
+            questions.splice(currentIdx + 1 + offset, 0, retryQ);
+        }
+
+        function showFeedback(symbol) {
+            const el = document.getElementById('overlay');
+            el.innerText = symbol;
+            el.className = 'show';
+            setTimeout(() => el.className = '', 600);
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            saveProgress();
+            display();
+        }
+
+        display();
+    </script>
+</body>
+</html>
