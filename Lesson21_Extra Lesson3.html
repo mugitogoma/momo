@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lesson 21 & Extra 3 - 関係詞 統合版</title>
+    <title>Lesson 21 & Extra 3 - 合計25問</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,16 +13,16 @@
         .progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin-bottom: 20px; overflow: hidden; }
         #progress-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.3s; }
         .stats { font-size: 14px; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 10px; font-family: 'Fira Code', monospace; }
-        .jp-text { font-size: 19px; font-weight: 700; margin-bottom: 15px; line-height: 1.6; color: #312e81; }
-        .en-text { font-size: 18px; background: #f8fafc; padding: 20px; border-radius: 15px; border: 2px dashed #cbd5e1; margin-bottom: 20px; line-height: 1.7; position: relative; }
+        .en-text { font-size: 20px; font-weight: 700; margin-bottom: 10px; line-height: 1.6; color: #312e81; }
+        .jp-text { font-size: 16px; color: #64748b; margin-bottom: 20px; line-height: 1.5; font-weight: normal; border-top: 1px solid #f1f5f9; padding-top: 10px; }
         .options { display: grid; gap: 12px; }
         .btn { padding: 15px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.2s; font-size: 16px; font-weight: bold; text-align: left; }
         .btn:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; transform: translateY(-2px); }
         .btn.correct { background: #dcfce7; border-color: #10b981; color: #10b981; }
         .btn.incorrect { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
-        .note { display: none; background: #eff6ff; padding: 20px; border-radius: 12px; color: #1e40af; font-size: 15px; margin-top: 20px; border-left: 5px solid #3b82f6; }
+        .note { display: none; background: #eff6ff; padding: 20px; border-radius: 12px; color: #1e40af; font-size: 15px; margin-top: 20px; border-left: 5px solid #3b82f6; line-height: 1.6; }
         .controls { display: flex; gap: 10px; margin-top: 20px; }
-        .next-btn, .skip-btn { flex: 1; padding: 15px; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; }
+        .next-btn, .skip-btn { flex: 1; padding: 15px; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold; }
         .next-btn { background: var(--primary); color: white; display: none; }
         .skip-btn { background: #94a3b8; color: white; }
         #overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 120px; pointer-events: none; opacity: 0; z-index: 1000; }
@@ -33,111 +33,86 @@
 <body>
     <div id="overlay"></div>
     <div class="container">
-        <div class="stats">
-            <span id="q-count">Question: 1/25</span>
-            <span id="score">Score: 0%</span>
-        </div>
+        <div class="stats"><span id="q-count"></span><span id="score"></span></div>
         <div class="progress-bar"><div id="progress-fill"></div></div>
-        <div class="jp-text" id="jp"></div>
-        <div class="en-text" id="en"></div>
-        <div class="options" id="ops"></div>
-        <div class="note" id="note"></div>
+        <div id="en" class="en-text"></div>
+        <div id="jp" class="jp-text"></div>
+        <div id="ops" class="options"></div>
+        <div id="note" class="note"></div>
         <div class="controls">
             <button class="skip-btn" id="skipBtn" onclick="skipQuestion()">スキップ</button>
             <button class="next-btn" id="nextBtn" onclick="nextQuestion()">次の問題へ</button>
         </div>
     </div>
-
     <script>
-        const originalQuestions = [
-            // p.44 Lesson 21
+        const qList = [
+            // Lesson 21 [p.44] (13問)
             { jp: "エミが美術部を辞めた理由を知ってる？", en: "Do you know the {B} Emi quit the art club?", ans: "reason why", ops: ["reason why", "way how", "reason that"], note: "the reason why で「〜という理由」を表します。" },
-            { jp: "あなたがこの問題を解いた方法を説明してくれませんか。", en: "Can you explain {B} you solved this problem?", ans: "how", ops: ["how", "the way how", "why"], note: "how または the way で「〜する方法」を表します。" },
+            { jp: "あなたがこの問題を解いた方法を説明してくれませんか。", en: "Can you explain {B} you solved this problem?", ans: "how", ops: ["how", "the way how", "way"], note: "方法を表す関係副詞 how です。the way と how は同時には使いません。" },
             { jp: "父が働いているレストランは私の家の近くにある。", en: "The {B} my father works is near my house.", ans: "restaurant where", ops: ["restaurant where", "restaurant which", "place when"], note: "場所を表す先行詞 + where です。" },
             { jp: "私は初めてアリスに会った日のことを覚えています。", en: "I remember the {B} I first met Alice.", ans: "day when", ops: ["day when", "day where", "day which"], note: "時を表す先行詞 + when です。" },
-            { jp: "I had a cold yesterday. That's why I couldn't go to the party.", en: "{B}", ans: "昨日風邪を引いていました。だからパーティーに行けなかったのです。", ops: ["昨日風邪を引いていました。だからパーティーに行けなかったのです。", "昨日風邪を引いたので、パーティーに行きませんでした。", "風邪を引いた時、パーティーへ行きました。"], note: "That's why ~ で「だから〜だ」という意味になります。" },
-            { jp: "This is where the baseball game was held yesterday.", en: "{B}", ans: "ここが昨日野球の試合が行われた場所です。", ops: ["ここが昨日野球の試合が行われた場所です。", "昨日ここで野球の試合を見ました。", "この場所で明日野球の試合が行われます。"], note: "This is where ~ で「ここが〜する場所だ」となります。" },
-            { jp: "I left home at noon, when it was raining.", en: "{B}", ans: "私は正午に家を出ましたが、その時雨が降っていました。", ops: ["私は正午に家を出ましたが、その時雨が降っていました。", "雨が降っていたので、正午に家を出ました。", "正午に家を出る時、雨が降り始めました。"], note: "カンマ + when は「その時〜」と補足説明する継続用法です。" },
-            { jp: "8月は、私たちの町を多くの観光客が訪れる時期です。", en: "August is {B}.", ans: "when a lot of tourists visit our city", ops: ["when a lot of tourists visit our city", "when visit our city a lot of tourists", "where a lot of tourists visit"], note: "August (時) を説明する関係副詞 when を使います。" },
-            { jp: "私は彼の箸の使い方が好きではありません。", en: "I don't like {B}.", ans: "the way he uses chopsticks", ops: ["the way he uses chopsticks", "how he uses chopsticks way", "the way he use chopsticks"], note: "the way または how で「〜のやり方」を表します。" },
-            { jp: "これは私が予約した部屋ではありません。", en: "This is not {B}.", ans: "the room which I booked", ops: ["the room which I booked", "the room where I booked", "the room what I booked"], note: "booked (予約した) の目的語が必要なので、関係代名詞 which です。" },
-            { jp: "このようにして私は英語を学んだ。", en: "{B} I learned English.", ans: "This is how", ops: ["This is how", "This is the way how", "That is why"], note: "This is how ~ で「このようにして〜」という方法を表します。" },
-            { jp: "私たちは奈良へ行き、そこでハイキングを楽しんだ。〔関係副詞を使って〕", en: "We went to Nara, {B}.", ans: "where we enjoyed hiking", ops: ["where we enjoyed hiking", "which we enjoyed hiking", "when we enjoyed hiking"], note: "場所 + カンマ + where で「そこで〜」という継続用法です。" },
-            { jp: "Teacher: Tell me the reason {B}.", en: "(あなたが遅れた)", ans: "why you were late", ops: ["why you were late", "how you were late", "that you were late"], note: "the reason why ~ で「〜した理由」です。" },
-            
-            // p.45 Extra Lesson 3
+            { jp: "昨日は風邪をひいていました。そういうわけでパーティーに行けませんでした。", en: "I had a cold yesterday. {B} I couldn't go to the party.", ans: "That's why", ops: ["That's why", "That's how", "This is where"], note: "That's why ~: 「そういうわけで〜」という意味です。" },
+            { jp: "ここは昨日野球の試合が行われた場所です。", en: "{B} the baseball game was held yesterday.", ans: "This is where", ops: ["This is where", "That is when", "It is why"], note: "This is where ~: 「ここは〜する場所です」となります。" },
+            { jp: "私は正午に家を出ましたが、その時雨が降っていました。", en: "I left home at noon, {B} it was raining.", ans: "when", ops: ["when", "where", "which"], note: "関係副詞の継続用法（, when）で、「そしてその時〜」と補足します。" },
+            { jp: "これは私が予約した部屋ではありません。", en: "This is not the room {B} I booked.", ans: "that", ops: ["that", "where", "what"], note: "book(〜を予約する)の目的語が抜けているので関係代名詞の that/which を使います。" },
+            { jp: "このようにして私は英語を学んだ。", en: "{B} I learned English.", ans: "This is how", ops: ["This is how", "That is why", "This is way"], note: "This is how: 「このようにして〜」という方法を表します。" },
+            { jp: "私たちは奈良へ行き、そこでハイキングを楽しんだ。", en: "We went to Nara, {B} we enjoyed hiking.", ans: "where", ops: ["where", "which", "when"], note: "関係副詞の継続用法（, where）で、「そしてそこで〜」と補足します。" },
+            { jp: "1964年は東京でオリンピックが開催された年です。", en: "1964 is the year {B} the Olympics were held in Tokyo.", ans: "when", ops: ["when", "where", "why"], note: "the year when で「〜という年」です。" },
+            { jp: "彼がその会議に来なかった理由を知っていますか。", en: "Do you know the reason {B} he didn't come to the meeting?", ans: "why", ops: ["why", "how", "when"], note: "the reason why: 「〜という理由」です。" },
+            { jp: "そこが私が生まれた場所です。", en: "That is {B} I was born.", ans: "where", ops: ["where", "when", "why"], note: "先行詞の the place が省略された形です。" },
+
+            // Extra Lesson 3 [p.45] (12問)
             { jp: "この町に住んでいる人ならだれでも、そのイベントに参加できます。", en: "{B} in this town can join the event.", ans: "Whoever lives", ops: ["Whoever lives", "Whomever lives", "Anyone who lives"], note: "Whoever = Anyone who。「〜する人はだれでも」です。" },
-            { jp: "だれが質問しても、丁寧に返事をしましょう。", en: "{B}, answer politely.", ans: "No matter who asks", ops: ["No matter who asks", "No matter whom asks", "Whoever asks"], note: "No matter who = Whoever。「だれが〜しても」という譲歩です。" },
-            { jp: "シンは何を着ても、かっこよく見える。", en: "{B} Shin wears, he looks cool.", ans: "No matter what", ops: ["No matter what", "Whatever", "What"], note: "No matter what = Whatever。「何が（を）〜しても」です。" },
-            { jp: "I'll take you wherever you want to go in this town.", en: "{B}", ans: "この町のあなたが望むところならどこへでも連れて行きましょう。", ops: ["この町のあなたが望むところならどこへでも連れて行きましょう。", "あなたの行きたい場所はこの町にあります。", "この町の中でどこに行くか決めてください。"], note: "wherever = any place where。「〜するところならどこへでも」です。" },
-            { jp: "Please call me whenever you need help.", en: "{B}", ans: "助けが必要な時はいつでも電話してください。", ops: ["助けが必要な時はいつでも電話してください。", "助けが必要ならすぐに電話すべきです。", "いつ電話しても私はあなたを助けます。"], note: "whenever = at any time when。「〜する時はいつでも」です。" },
-            { jp: "However fast you run, you won't be in time for the train.", en: "{B}", ans: "どんなに速く走っても、その電車には間に合わないでしょう。", ops: ["どんなに速く走っても、その電車には間に合わないでしょう。", "速く走れば、その電車に間に合うかもしれません。", "その電車に間に合うために、できるだけ速く走ってください。"], note: "However + 形容詞/副詞 で「どんなに〜しても」となります。" },
-            { jp: "彼はどれだけ疲れていても、毎朝イヌの散歩をします。", en: "({B}), he walks his dog every morning.", ans: "However tired he is", ops: ["However tired he is", "However he is tired", "No matter tired he is"], note: "However + 形容詞 + S + V の語順に注意。" },
-            { jp: "あなたが何をしようとも、私はあなたの味方です。", en: "({B}), I'm on your side.", ans: "No matter what you do", ops: ["No matter what you do", "No matter you do what", "Whatever you do"], note: "No matter what ~ で「何が（を）〜しても」です。" },
-            { jp: "妹は僕が言うことを何でも信じる。", en: "My sister believes {B}.", ans: "whatever I say", ops: ["whatever I say", "whenever I say", "wherever I say"], note: "whatever = anything that。「〜することは何でも」です。" },
-            { jp: "あなたがどちらのルートを選んでも、1時間ほどかかるでしょう。", en: "{B}, it will take about an hour.", ans: "Whichever route you choose", ops: ["Whichever route you choose", "Whichever you choose route", "No matter which route you choose"], note: "Whichever + 名詞 で「どちらの〜を…しても」となります。" },
-            { jp: "私がいつトムを訪れても、彼の部屋は清潔だ。", en: "{B}, his room is clean.", ans: "Whenever I visit Tom", ops: ["Whenever I visit Tom", "However I visit Tom", "No matter visit Tom whenever"], note: "Whenever = No matter when。「いつ〜しても」です。" },
-            { jp: "Boy: You can order {B}. It's on me today.", en: "(好きなものを何でも)", ans: "whatever you like", ops: ["whatever you like", "whichever you like", "whenever you like"], note: "whatever で「何でも好きなもの」を表します。" }
+            { jp: "だれが質問しても、丁寧に返事をしましょう。", en: "{B} asks, answer politely.", ans: "Whoever", ops: ["Whoever", "Whatever", "Whichever"], note: "Whoever = No matter who。「だれが〜しても」という譲歩の意味です。" },
+            { jp: "シンは何を着ても、かっこよく見える。", en: "{B} Shin wears, he looks cool.", ans: "Whatever", ops: ["Whatever", "No matter what", "What"], note: "Whatever = No matter what。「何を〜しても」です。" },
+            { jp: "この町のどこでもあなたの行きたいところへ連れて行きます。", en: "I'll take you {B} you want to go in this town.", ans: "wherever", ops: ["wherever", "whenever", "whichever"], note: "wherever: 「〜するところならどこでも」です。" },
+            { jp: "助けが必要な時はいつでも電話してください。", en: "Please call me {B} you need help.", ans: "whenever", ops: ["whenever", "wherever", "however"], note: "whenever: 「〜する時はいつでも」です。" },
+            { jp: "どんなに速く走っても、電車には間に合わないでしょう。", en: "{B} fast you run, you won't be in time for the train.", ans: "However", ops: ["However", "Whatever", "No matter"], note: "However + 副詞(fast)で「どんなに〜しても」となります。" },
+            { jp: "彼はどれだけ疲れていても、毎朝イヌの散歩をします。", en: "{B} tired he is, he walks his dog every morning.", ans: "However", ops: ["However", "Whatever", "No matter"], note: "However + 形容詞(tired) + S + V の形です。" },
+            { jp: "あなたが何をしようとも、私はあなたの味方です。", en: "{B} you do, I'm on your side.", ans: "No matter what", ops: ["No matter what", "Whatever you do", "Whatever"], note: "No matter what: 「何を〜しても」を表す強い譲歩です。" },
+            { jp: "妹は僕が言うことを何でも信じる。", en: "My sister believes {B} I say.", ans: "whatever", ops: ["whatever", "whenever", "wherever"], note: "whatever: 「〜することは何でも」という意味です。" },
+            { jp: "あなたがどちらのルートを選んでも、1時間ほどかかるでしょう。", en: "{B} route you choose, it will take about an hour.", ans: "Whichever", ops: ["Whichever", "Whatever", "Whoever"], note: "Whichever: 「どちらの〜を…しても」です。" },
+            { jp: "私がいつトムを訪れても、彼の部屋は清潔だ。", en: "{B} I visit Tom, his room is clean.", ans: "Whenever", ops: ["Whenever", "However", "Wherever"], note: "Whenever = No matter when。「いつ〜しても」です。" },
+            { jp: "好きなものを何でも注文していいよ。今日は僕のおごりだ。", en: "You can order {B} you like.", ans: "whatever", ops: ["whatever", "whichever", "whenever"], note: "whatever: 「何でも好きなものを」という意味で使われます。" }
         ];
 
-        let questions = [...originalQuestions];
+        let questions = [...qList];
         let currentIdx = 0; let correctCount = 0; let totalAnswered = 0;
-
-        function save() { localStorage.setItem('L21_EL3_progress', JSON.stringify({idx: currentIdx, correct: correctCount, total: totalAnswered, qs: questions})); }
-        function load() {
-            const data = localStorage.getItem('L21_EL3_progress');
-            if (data) {
-                const p = JSON.parse(data);
-                if (confirm('前回の続きから再開しますか？')) {
-                    currentIdx = p.idx; correctCount = p.correct; totalAnswered = p.total; questions = p.qs;
-                } else { localStorage.removeItem('L21_EL3_progress'); }
-            }
-        }
-
         function display() {
-            if (currentIdx >= questions.length) {
-                alert(`全25問終了！正解率: ${Math.round((correctCount/totalAnswered)*100)}%`);
-                currentIdx = 0; correctCount = 0; totalAnswered = 0;
-                questions = [...originalQuestions];
-                localStorage.removeItem('L21_EL3_progress');
-            }
+            if (currentIdx >= questions.length) { alert('全25問終了しました！よく頑張りましたね！'); currentIdx = 0; correctCount = 0; totalAnswered = 0; questions = [...qList]; }
             const q = questions[currentIdx];
             document.getElementById('q-count').innerText = `Question: ${currentIdx + 1}/${questions.length}`;
             document.getElementById('score').innerText = `Score: ${totalAnswered ? Math.round((correctCount/totalAnswered)*100) : 0}%`;
             document.getElementById('progress-fill').style.width = `${((currentIdx+1)/questions.length)*100}%`;
-            document.getElementById('jp').innerText = q.jp;
+            
             document.getElementById('en').innerHTML = q.en.replace('{B}', '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>');
+            document.getElementById('jp').innerText = q.jp;
+            
             const opsBox = document.getElementById('ops'); opsBox.innerHTML = '';
             [...q.ops].sort(() => Math.random() - 0.5).forEach(o => {
                 const b = document.createElement('button'); b.className = 'btn'; b.innerText = o;
-                b.onclick = () => check(o, b); opsBox.appendChild(b);
+                b.onclick = () => {
+                    totalAnswered++; document.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
+                    if (o === q.ans) { correctCount++; b.classList.add('correct'); showF('⭕'); }
+                    else { b.classList.add('incorrect'); showF('❌'); document.querySelectorAll('.btn').forEach(btn => { if(btn.innerText === q.ans) btn.classList.add('correct'); }); questions.splice(currentIdx + 3, 0, {...q}); }
+                    
+                    document.getElementById('en').innerHTML = q.en.replace('{B}', `<span style="color:var(--primary); font-weight:bold;">${q.ans}</span>`);
+                    document.getElementById('jp').innerText = q.jp;
+                    
+                    if(q.note) {
+                        document.getElementById('note').innerText = q.note;
+                        document.getElementById('note').style.display = 'block';
+                    }
+                    document.getElementById('nextBtn').style.display = 'block'; document.getElementById('skipBtn').style.display = 'none';
+                };
+                opsBox.appendChild(b);
             });
             document.getElementById('note').style.display = 'none'; document.getElementById('nextBtn').style.display = 'none'; document.getElementById('skipBtn').style.display = 'block';
         }
-
-        function check(sel, btn) {
-            const q = questions[currentIdx];
-            const isCorrect = sel === q.ans;
-            totalAnswered++;
-            document.querySelectorAll('.btn').forEach(b => b.disabled = true);
-            if (isCorrect) {
-                correctCount++; btn.classList.add('correct'); showF('⭕');
-            } else {
-                btn.classList.add('incorrect'); showF('❌');
-                document.querySelectorAll('.btn').forEach(b => { if(b.innerText === q.ans) b.classList.add('correct'); });
-                questions.splice(currentIdx + 3, 0, {...q});
-            }
-            document.getElementById('en').innerHTML = q.en.replace('{B}', `<span style="color:var(--success); font-weight:bold;">${q.ans}</span>`);
-            document.getElementById('note').innerText = q.note; document.getElementById('note').style.display = 'block';
-            document.getElementById('nextBtn').style.display = 'block'; document.getElementById('skipBtn').style.display = 'none';
-            save();
-        }
-
         function skipQuestion() { questions.splice(currentIdx + 5, 0, {...questions[currentIdx]}); nextQuestion(); }
-        function nextQuestion() { currentIdx++; save(); display(); }
+        function nextQuestion() { currentIdx++; display(); }
         function showF(s) { const el = document.getElementById('overlay'); el.innerText = s; el.className = 'show'; setTimeout(() => el.className = '', 600); }
-
-        load(); display();
+        display();
     </script>
 </body>
 </html>
