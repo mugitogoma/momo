@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson 24 - 全27問 (演出・音声あり)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #4f46e5; --success: #10b981; --error: #ef4444; --bg: #f5f3ff; --text: #1e293b; }
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; color: var(--text); }
+        .container { max-width: 600px; width: 100%; background: white; border-radius: 24px; padding: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); position: relative; }
+        .progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin-bottom: 20px; overflow: hidden; }
+        #progress-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.3s; }
+        .stats { font-size: 14px; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 10px; font-family: 'Fira Code', monospace; }
+        .en-text { font-size: 20px; font-weight: 700; margin-bottom: 10px; line-height: 1.6; color: #312e81; }
+        .jp-text { font-size: 16px; color: #64748b; margin-bottom: 20px; line-height: 1.5; font-weight: normal; border-top: 1px solid #f1f5f9; padding-top: 10px; }
+        .options { display: grid; gap: 12px; }
+        .btn { padding: 15px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.2s; font-size: 16px; font-weight: bold; text-align: left; }
+        .btn:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; transform: translateY(-2px); }
+        .btn.correct { background: #dcfce7; border-color: #10b981; color: #10b981; }
+        .btn.incorrect { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
+        .note { display: none; background: #eff6ff; padding: 20px; border-radius: 12px; color: #1e40af; font-size: 15px; margin-top: 20px; border-left: 5px solid #3b82f6; line-height: 1.6; }
+        .controls { display: flex; gap: 10px; margin-top: 20px; }
+        .next-btn, .skip-btn { flex: 1; padding: 15px; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .next-btn { background: var(--primary); color: white; display: none; }
+        .skip-btn { background: #94a3b8; color: white; }
+        /* ⭕❌のデカい演出用レイヤー */
+        #overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 150px; pointer-events: none; opacity: 0; z-index: 1000; text-shadow: 0 0 20px rgba(0,0,0,0.2); }
+        #overlay.show { animation: pop 0.6s ease-out; }
+        @keyframes pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <div class="container">
+        <div class="stats"><span id="q-count"></span><span id="score"></span></div>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <div id="en" class="en-text"></div>
+        <div id="jp" class="jp-text"></div>
+        <div id="ops" class="options"></div>
+        <div id="note" class="note"></div>
+        <div class="controls">
+            <button class="skip-btn" id="skipBtn" onclick="skipQuestion()">スキップ</button>
+            <button class="next-btn" id="nextBtn" onclick="nextQuestion()">次の問題へ</button>
+        </div>
+    </div>
+    <script>
+        const qList = [
+            // ❶ (4問)
+            { jp: "もし私がお金持ちなら、世界中を旅行するだろうに。", en: "If I {B} rich, I would travel all over the world.", ans: "were", ops: ["were", "am"], note: "仮定法過去：be動詞はwere。" },
+            { jp: "もし明日雨が降れば、家にいるつもりだ。", en: "If it {B} tomorrow, I will stay home.", ans: "rains", ops: ["rains", "rained"], note: "直説法：現実に起こりうる条件。" },
+            { jp: "もし海の近くに住んでいれば、毎日泳ぎに行けるのに。", en: "If I {B} near the sea, I could go swimming every day.", ans: "lived", ops: ["lived", "live"], note: "仮定法過去：現在の反対。" },
+            { jp: "もし今日が休日なら、もっと眠れるのに。", en: "If it were a holiday today, I {B} sleep longer.", ans: "could", ops: ["could", "can"], note: "主節：助動詞の過去形。" },
+            // ❷ (3問)
+            { jp: "もっと気をつけていたら、そんな間違いはしなかっただろうに。", en: "If I {B} more careful, I {B} such a mistake.", ans: "had been / would not have made", ops: ["had been / would not have made", "were / would not make", "had been / will not make"], note: "仮定法過去完了（過去の反対）。" },
+            { jp: "もう1組イヤホンを持っていたら、君に貸してあげられたのに。", en: "If I {B} another pair of earphones, I {B} it to you.", ans: "had / could lend", ops: ["had / could lend", "have / can lend", "had had / could have lent"], note: "現在の仮定。" },
+            { jp: "もしその日が彼女の誕生日だと覚えていたら、彼女にプレゼントを買ったのに。", en: "If I {B} it was her birthday, I would have bought her a present.", ans: "had remembered", ops: ["had remembered", "remembered"], note: "If節：過去完了形。" },
+            // ❸ (3問)
+            { jp: "もし晴れていたら、外で遊べるのに。", en: "If {B}, {B} outside.", ans: "it were sunny / we could play", ops: ["it were sunny / we could play", "it sunny were / play we could"], note: "語順：If S 過去形, S 助動詞過去＋原形。" },
+            { jp: "もしあなたが私たちのチームに入っていたら、試合に勝てたかもしれないのに。", en: "If {B}, {B} the game.", ans: "you had joined our team / we might have won", ops: ["you had joined our team / we might have won", "you joined our team / we might win"], note: "語順：If S had p.p., S 助動詞過去 have p.p." },
+            { jp: "もしもっと時間があったら、彼女と話せたのに。", en: "If {B}, {B} with her.", ans: "I had had more time / I could have talked", ops: ["I had had more time / I could have talked", "I had more time / I could talk"], note: "過去の仮定：had had を使います。" },
+            // ❹ (3問)
+            { jp: "自分の部屋があればなあ。", en: "I wish I {B} my own room.", ans: "had", ops: ["had", "have"], note: "I wish S 過去形。" },
+            { jp: "車の運転ができればなあ。", en: "I wish I {B} a car.", ans: "could drive", ops: ["could drive", "can drive"], note: "I wish S could 原形。" },
+            { jp: "あなたがそのとき、私といっしょにいてくれたならなあ。", en: "I wish you {B} with me at that time.", ans: "had been", ops: ["had been", "were"], note: "あの時(過去)の願望：I wish S 過去完了。" },
+            // ❺ (4問)
+            { jp: "先月たくさん服を買っていなかったら、今もっとお金があるのに。", en: "If I {B} a lot of clothes last month, I {B} more money now.", ans: "had not bought / would have", ops: ["had not bought / would have", "did not buy / had"], note: "混合型：If節(過去完了)＋主節(助動詞過去＋原形)。" },
+            { jp: "あのとき祖母に「ありがとう」と言えばよかった。", en: "I {B} \"Thank you.\" to my grandmother then.", ans: "wish I had said", ops: ["wish I had said", "wish I said"], note: "過去への願望：I wish S 過去完了。" },
+            { jp: "もっと背が高ければ、私はこのドレスを着ることができるのに。", en: "If I {B} taller, I {B} this dress.", ans: "were / could wear", ops: ["were / could wear", "am / can wear"], note: "現在の仮定。" },
+            { jp: "もし君がタクシーに乗っていたら、パーティーに間に合っただろうに。", en: "If you {B} a taxi, you {B} in time for the party.", ans: "had taken / would have been", ops: ["had taken / would have been", "took / would be"], note: "過去の仮定。" },
+            // ❻ (4問)
+            { jp: "英語をもっと流暢に話せればいいのになあ。", en: "I wish I could speak English more fluently.", ans: "I wish I could speak English more fluently.", ops: ["I wish I could speak English more fluently.", "英語をもっと練習したい。", "英語を話すのは難しい。"], note: "I wish I could..." },
+            { jp: "雨の中を歩いていなかったら、風邪をひかなかっただろうに。", en: "If I hadn’t walked in the rain, I wouldn’t have caught a cold.", ans: "If I hadn’t walked in the rain, I wouldn’t have caught a cold.", ops: ["If I hadn’t walked in the rain, I wouldn’t have caught a cold.", "雨の中を歩いたので風邪をひきました。", "雨で風邪をひきました。"], note: "過去完了の仮定。" },
+            { jp: "もっと早く薬を飲んでいたら、今ごろは元気だろうに。", en: "If you had taken the medicine earlier, you would be fine now.", ans: "If you had taken the medicine earlier, you would be fine now.", ops: ["If you had taken the medicine earlier, you would be fine now.", "早く薬を飲めばよかったです。", "薬を飲んだので元気です。"], note: "混合型：過去から現在への影響。" },
+            { jp: "冷蔵庫に食べ物があれば、昼食を作れるのに。", en: "If there were some food in the fridge, I could make lunch.", ans: "If there were some food in the fridge, I could make lunch.", ops: ["If there were some food in the fridge, I could make lunch.", "冷蔵庫に何かありますか。", "昼食のために何か買います。"], note: "仮定法過去。" },
+            // ❼ (5問)
+            { jp: "私があなたなら、そのパーティーに行くのに。", en: "If I {B} to the party.", ans: "were you, I would go", ops: ["were you, I would go", "am you, I will go"], note: "If I were you, I would..." },
+            { jp: "もっと一生けんめい勉強していたら、その試験に合格できただろうに。", en: "If I {B} the exam.", ans: "had studied harder, I could have passed", ops: ["had studied harder, I could have passed", "studied harder, I could pass"], note: "過去完了の仮定。" },
+            { jp: "昨日、宿題を終わらせておけばよかった。", en: "I wish {B} yesterday.", ans: "I had finished my homework", ops: ["I had finished my homework", "I finished my homework"], note: "過去の後悔。" },
+            { jp: "空を飛べたらいいのになあ。", en: "I wish {B}.", ans: "I could fly", ops: ["I could fly", "I can fly"], note: "現在の願望。" },
+            { jp: "今朝朝食を食べていたら、今空腹ではないだろうに。", en: "{B}.", ans: "If I had eaten breakfast this morning, I wouldn't be hungry now", ops: ["If I had eaten breakfast this morning, I wouldn't be hungry now", "If I ate breakfast this morning, I wouldn't have been hungry now"], note: "混合型。" },
+            // Challenge (1問)
+            { jp: "（病気でなければ）もし病気でなければ、釣りに行くのになあ。", en: "If I {B}, I would go fishing.", ans: "were not sick", ops: ["were not sick", "am not sick"], note: "仮定法過去。" }
+        ];
+
+        let questions = [...qList];
+        let currentIdx = 0; let correctCount = 0; let totalAnswered = 0;
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'en-US'; uttr.rate = 0.9;
+            window.speechSynthesis.speak(uttr);
+        }
+
+        function display() {
+            if (currentIdx >= questions.length) {
+                alert(`全27問終了！お疲れ様でした。\n正解率: ${Math.round((correctCount/questions.length)*100)}%`);
+                currentIdx = 0; correctCount = 0; totalAnswered = 0; questions = [...qList];
+            }
+            const q = questions[currentIdx];
+            document.getElementById('q-count').innerText = `Question: ${currentIdx + 1}/${questions.length}`;
+            document.getElementById('score').innerText = `Score: ${totalAnswered ? Math.round((correctCount/totalAnswered)*100) : 0}%`;
+            document.getElementById('progress-fill').style.width = `${((currentIdx+1)/questions.length)*100}%`;
+            
+            document.getElementById('en').innerHTML = q.en.replace(/{B}/g, '<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>');
+            document.getElementById('jp').innerText = q.jp;
+            
+            const opsBox = document.getElementById('ops'); opsBox.innerHTML = '';
+            [...q.ops].sort(() => Math.random() - 0.5).forEach(o => {
+                const b = document.createElement('button'); b.className = 'btn'; b.innerText = o;
+                b.onclick = () => {
+                    totalAnswered++; 
+                    document.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
+                    
+                    let finalEn = q.en;
+                    const answers = q.ans.split(' / ');
+                    answers.forEach(a => { finalEn = finalEn.replace('{B}', a); });
+
+                    if (o === q.ans) { 
+                        correctCount++; b.classList.add('correct'); showF('⭕'); 
+                    } else { 
+                        b.classList.add('incorrect'); showF('❌'); 
+                        document.querySelectorAll('.btn').forEach(btn => { if(btn.innerText === q.ans) btn.classList.add('correct'); });
+                        questions.splice(currentIdx + 3, 0, {...q}); 
+                    }
+                    
+                    // 正解を埋め込んだテキストを再表示
+                    let displayEn = q.en;
+                    answers.forEach(a => { displayEn = displayEn.replace('{B}', `<span style="color:var(--primary); font-weight:bold;">${a}</span>`); });
+                    document.getElementById('en').innerHTML = displayEn;
+                    
+                    // 音読
+                    speak(finalEn.replace(/<[^>]*>/g, ''));
+                    
+                    document.getElementById('note').innerText = q.note;
+                    document.getElementById('note').style.display = 'block';
+                    document.getElementById('nextBtn').style.display = 'block'; 
+                    document.getElementById('skipBtn').style.display = 'none';
+                };
+                opsBox.appendChild(b);
+            });
+            document.getElementById('note').style.display = 'none'; 
+            document.getElementById('nextBtn').style.display = 'none'; 
+            document.getElementById('skipBtn').style.display = 'block';
+        }
+
+        function skipQuestion() { questions.splice(currentIdx + 5, 0, {...questions[currentIdx]}); nextQuestion(); }
+        function nextQuestion() { currentIdx++; display(); }
+        function showF(s) { 
+            const el = document.getElementById('overlay'); 
+            el.innerText = s; 
+            el.style.color = (s === '⭕') ? '#10b981' : '#ef4444';
+            el.className = 'show'; 
+            setTimeout(() => el.className = '', 600); 
+        }
+        
+        display();
+    </script>
+</body>
+</html>
